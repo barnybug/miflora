@@ -2,13 +2,15 @@
 
 Go library/command line tool to read Mi Flora bluetooth sensors.
 
+![Xiaomi Flora](https://github.com/barnybug/miflora/raw/master/miflora.jpg "Xiaomi Flora")
+
 ## Install
 
-$ go get github.com/barnybug/miflora/cmd/miflora
+	$ go get github.com/barnybug/miflora/cmd/miflora
 
 ## Run
 
-$ miflora
+	$ miflora
 
 ## Requirements
 
