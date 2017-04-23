@@ -9,8 +9,9 @@ import (
 )
 
 type Miflora struct {
-	mac     string
-	adapter string
+	mac      string
+	adapter  string
+	firmware Firmware
 }
 
 func NewMiflora(mac string, adapter string) *Miflora {
@@ -45,6 +46,23 @@ func gattCharRead(mac string, handle string, adapter string) ([]byte, error) {
 	return h, nil
 }
 
+func gattCharWrite(mac string, handle string, value string, adapter string) error {
+	cmd := exec.Command("gatttool", "-b", mac, "--char-write-req", "-a", handle, "-n", value, "-i", adapter)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	s := out.String()
+	if !strings.Contains(s, "successfully") {
+		return errors.New("Unexpected response")
+	}
+
+	return nil
+}
+
 type Firmware struct {
 	Version string
 	Battery byte
@@ -59,6 +77,7 @@ func (m *Miflora) ReadFirmware() (Firmware, error) {
 		Version: string(data[2:]),
 		Battery: data[0],
 	}
+	m.firmware = f
 	return f, nil
 }
 
@@ -69,7 +88,19 @@ type Sensors struct {
 	Conductivity uint16
 }
 
+func (m *Miflora) enableRealtimeDataReading() error {
+	return gattCharWrite(m.mac, "0x33", "A01F", m.adapter)
+}
+
 func (m *Miflora) ReadSensors() (Sensors, error) {
+	if m.firmware.Version >= "2.6.6" {
+		// newer firmwares explicitly need realtime reading enabling
+		err := m.enableRealtimeDataReading()
+		if err != nil {
+			return Sensors{}, err
+		}
+	}
+
 	data, err := gattCharRead(m.mac, "0x35", m.adapter)
 	if err != nil {
 		return Sensors{}, err
